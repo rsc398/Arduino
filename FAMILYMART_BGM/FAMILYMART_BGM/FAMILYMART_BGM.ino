@@ -1,0 +1,29 @@
+void setup() {
+  tone(8,740,300);
+  delay(300);
+  tone(8,587,300);
+  delay(300);
+  tone(8,440,300);
+  delay(300);
+  tone(8,587,300);
+  delay(300);
+  tone(8,659,300);
+  delay(300);
+  tone(8,880,300);
+  delay(600);
+  tone(8,880,300);
+  delay(300);
+  tone(8,659,300);
+  delay(300);
+  tone(8,740,300);
+  delay(300);
+  tone(8,659,300);
+  delay(300);
+  tone(8,440,300);
+  delay(300);
+  tone(8,587,300);
+  delay(600);
+  delay(2000);
+}
+void loop() {
+}
