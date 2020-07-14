@@ -1,0 +1,45 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Net.Sockets;
+using System.Text;
+using System.Windows.Forms;
+
+namespace LightApp {
+    public partial class Form1 : Form {
+        public Form1() {
+            InitializeComponent();
+        }
+
+        private void button1_Click( object sender, EventArgs e ) {
+            SendCommand( true );
+        }
+
+        private void button2_Click( object sender, EventArgs e ) {
+            SendCommand( false );
+        }
+
+        void SendCommand( bool on ) {
+            try {
+                Int32 port = int.Parse( textBox2.Text );
+                TcpClient client = new TcpClient( textBox1.Text, port );
+                Byte[] data = System.Text.Encoding.ASCII.GetBytes( string.Format( "S:{0}", on ? "1" : "0" ) );
+                NetworkStream stream = client.GetStream();
+                stream.Write( data, 0, data.Length );
+                data = new Byte[256];
+                String responseData = String.Empty;
+                Int32 bytes = stream.Read( data, 0, data.Length );
+                responseData = System.Text.Encoding.ASCII.GetString( data, 0, bytes );
+                stream.Close();
+                client.Close();
+            } catch(Exception ex) {
+                MessageBox.Show( ex.Message, "Switch", MessageBoxButtons.OK, MessageBoxIcon.Error );
+            }
+
+        }
+
+    }
+}
