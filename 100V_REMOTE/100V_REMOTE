@@ -1,0 +1,28 @@
+#define sigout  A0
+#define sigon 5
+unsigned int temp = 0;
+ 
+void setup() {
+  Serial.begin(9600);
+  pinMode(sigout, INPUT_PULLUP);
+  pinMode(sigon, OUTPUT);
+  digitalWrite(sigon, HIGH);
+}
+ 
+void loop() {
+  unsigned int out = analogRead(sigout);
+  temp = out * 500 / 1024 - 10;
+ 
+  if(temp > 29 && digitalRead(sigon) == LOW) {
+    digitalWrite(sigon, HIGH);
+  } else if(temp <= 29 && digitalRead(sigon) == HIGH) {
+    digitalWrite(sigon, LOW);
+  } else {
+    ;
+  }
+  if(temp >= 45) {
+    delay(1000);
+  } else {
+    delay(300000);
+  }
+}
