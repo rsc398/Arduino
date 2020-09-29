@@ -1,0 +1,20 @@
+#include <TimerOne.h>
+long t1 = 2000;
+long t2 = 8000;
+void setup() {
+  pinMode(13, OUTPUT);
+  Timer1.initialize(10000);
+  Timer1.attachInterrupt(T1Isr);
+}
+void loop() {
+}
+void T1Isr() {
+  digitalWrite(13, HIGH);
+  Timer1.setPeriod(t1);
+  Timer1.attachInterrupt( T2Isr );
+}
+void T2Isr() {
+  digitalWrite(13, LOW);
+  Timer1.setPeriod(t2);
+  Timer1.attachInterrupt( T1Isr );
+}
