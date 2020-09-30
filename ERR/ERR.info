@@ -1,0 +1,21 @@
+unsigned long LASTmills;          // 前回のmillisの値
+unsigned int T[500];              // 数値記録バッファ
+int n = 0;
+
+void setup() {
+  Serial.begin(9600);
+  LASTmills = millis();
+  while (n < 500) {               // 指定回数だけ
+    if (millis() != LASTmills) {  // millisの値が前回より変化していたら
+      LASTmills = millis();
+      T[n] = LASTmills;           // 配列に値を記録
+      n++;
+    }
+  }
+  for (n = 0; n < 500; n++) {
+    Serial.println(T[n]);        // 記録された値をシリアルに出力
+  }
+}
+
+void loop() {                     // 何もしないで待つ
+}
