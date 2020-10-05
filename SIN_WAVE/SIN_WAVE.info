@@ -1,0 +1,141 @@
+#ifdef		__AVR_ATmega328P__
+#elif		__AVR_ATmega32U4__
+#else
+#error		"This program runs only on __AVR_ATmega328P__ / __AVR_ATmega32U4__"
+#endif
+
+
+#ifdef		__AVR__
+typedef		unsigned	char	uint8;
+typedef		unsigned	int		uint16;
+typedef		unsigned	long	uint32;
+#endif	//	__AVR__
+
+
+const	char	prog_name[]="sin_wave_pwm_test";
+const	char	prog_vers[]="1.00";
+const	int		max_lbuf=64;				// sin wave period [ms]
+const	int		pin_SIN=9;
+
+
+static	int		sin_ampl;
+static	int		sin_amph;
+static	uint16	msec_peri;
+static	uint32	usec_sin;
+static	char	lbuf[max_lbuf];
+volatile	uint8	*const	tifr1=(uint8 *)0x0036;
+volatile	uint8	*const	timsk1=(uint8 *)0x006f;
+volatile	uint8	*const	tccr1a=(uint8 *)0x0080;
+volatile	uint8	*const	tccr1b=(uint8 *)0x0081;
+volatile	uint16	*const	tcnt1=(uint16 *)0x0084;
+volatile	uint16	*const	ocr1a=(uint16 *)0x0088;
+volatile	uint16	*const	ocr1b=(uint16 *)0x008a;
+
+
+ISR (TIMER1_OVF_vect)
+{
+	int		dty;
+	float	sin_wav;
+	usec_sin += 2040;
+	sin_wav=sin ((2.*M_PI/1000.)*usec_sin/msec_peri) + 1.;
+	sin_wav=(sin_wav*sin_amph + (2. - sin_wav)*sin_ampl)*(1./200.);
+	dty=int (sin_wav*256.);
+	dty=(dty<0)? 0: (dty>255)? 255: dty;
+	(*ocr1a)=dty;
+}
+
+
+void	get_line (void)
+{
+	int		idx;
+	int		chr;
+	for (idx=0; idx<max_lbuf - 1; idx++)
+	{
+		do
+		{
+			chr=Serial.read ();
+		} while (chr==-1);
+		if (chr=='\n')
+			break;
+		lbuf[idx]=chr;
+	}
+	if (idx>0 && lbuf[idx - 1]=='\r')
+		idx--;
+	lbuf[idx]='\0';
+}
+
+
+void	setup (void)
+{
+	// serial
+	Serial.begin (9600);
+	while (!Serial)
+		;
+	delay (10);
+	pinMode (pin_SIN, OUTPUT);
+	msec_peri=2000;
+	sin_ampl=0;
+	sin_amph=100;
+	usec_sin=0;
+	(*tccr1a) |= 0x80;
+	(*tifr1)=0x01;
+	(*timsk1)=0x01;
+	Serial.println ("RDY");
+}
+
+void	loop (void)
+{
+	while (Serial.available ()>0)
+	{
+		const	char	*str_c;
+		get_line ();
+		if (strncmp (lbuf,"sin,",4)==0)
+		{
+			// sin,<period_ms>[,<amplitude_high%>[,<amplitude_low%>]]
+			str_c=strchr (lbuf,',');
+			msec_peri=atoi (str_c + 1);
+			str_c=strchr (str_c + 1,',');
+			if (str_c==NULL)
+			{
+				sin_ampl=0;
+				sin_amph=100;
+			}
+			else
+			{
+				sin_amph=atoi (str_c + 1);
+				sin_amph=(sin_amph<0)? 0: (100<sin_amph)? 100: sin_amph;
+				str_c=strchr (str_c + 1,',');
+				if (str_c==NULL)
+					sin_ampl=0;
+				else
+					sin_ampl=atoi (str_c + 1);
+				sin_ampl=(sin_ampl<0)? 0:
+					(sin_amph<sin_ampl)? sin_amph: sin_ampl;
+			}
+			sprintf (lbuf,"OK: sin wave pwm: %d[ms], %d~%d[%%]",
+				msec_peri, sin_ampl,sin_amph);
+			Serial.println (lbuf);
+		}
+		else if (strncmp (lbuf,"who",3)==0)
+		{
+			sprintf (lbuf,"OK: %s ver.%s",prog_name,prog_vers);
+			Serial.println (lbuf);
+		}
+		else if (strncmp (lbuf,"help",4)==0)
+		{
+			Serial.println ("OK+ sin,<period_ms>"
+				"[,<amplitude_high%>[,<amplitude_low%>]]");
+			Serial.println ("OK+ who");
+			Serial.println ("OK: help");
+		}
+		else if (lbuf[0]=='\0')
+		{
+		}
+		else
+		{
+			Serial.print ("ERR: unknown command: ");
+			Serial.println (lbuf);
+		}
+		break;
+	}
+}
