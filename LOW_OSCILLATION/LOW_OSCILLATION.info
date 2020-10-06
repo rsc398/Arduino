@@ -1,0 +1,146 @@
+#include < LiquidCrystal.h>
+#include < MsTimer2.h>
+
+#define VMEAS 0 // 出力電圧測定のためのアナログ入力ピン番号
+#define FVOL 1 // 周波数を変えるボリュームのアナログ入力ピン番号
+#define DUVOL 2 // デューティー比を変えるためのボリュームのアナログ入力ピン番号
+#define FREQSEL 17 // 周波数レンジ選択ボタンのピン番号
+#define MODESEL 18 // 波形モード選択ボタンのピン番号
+
+int k; // 波形出力のためのカウンタ,割込み内から参照するのでグローバルで定義
+int mode=0; // 波形モード
+int frange=1; // 周波数レンジ
+int fdelay=1000; // 周波数でディレイ時間を決める
+int fix=0; // 設定値をフィックスして出力を安定させるために使うフラグ
+int fixcnt=0; // フィックスするため，何もしてない時間を計測するカウンタ
+int lcdcnt=0; // タイマーでLCDを表示させるときの頻度を決めるカウンタ
+float vout, voutB; // 電圧出力値，＊Bは前回系即時の値保持用．フィックスする判断に使う
+int vout1, vout2; // 小数点以上と以下に分ける
+int freq, freqB; // 周波数，　＊Bは周波数値保持用
+float duty, dutyB; //　デューティー比とその保持用
+
+const byte sindat[]={32,35,38,41,44,46,49,51,54,56,58,59,61,62,62,63,63,63,62,62,61,59,58,56,54,52,49,46,44,41,38,35,32,28,25,22,19,17,14,12,9,7,5,4,2,1,1,0,0,0,1,1,2,4,5,7,9,11,14,17,19,22,25,28};
+const byte tridat[]={31,33,35,37,39,41,43,45,47,49,51,53,55,57,59,61,63,61,59,57,55,53,51,49,47,45,43,41,39,37,35,33,31,29,27,25,23,21,19,17,15,13,11,9,7,5,3,1,0,1,3,5,7,9,11,13,15,17,19,21,23,25,27,29};
+const byte sawdat[]={31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30};
+const byte rectdat[]={63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,63,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+byte dat[64];
+
+const int fdat[]={100,10,1};
+
+// LiquidCrystal lcd(rs, rw, enable, d4, d5, d6, d7);
+LiquidCrystal lcd(2, 19, 3, 4, 5, 6, 7);
+
+void setdat(int n)
+{
+int i;
+switch (n){
+case 0: for(i=0;i<64;i++) dat[i]= sindat[i]; break;
+case 1: for(i=0;i<64;i++) dat[i]= tridat[i]; break;
+case 2: for(i=0;i<64;i++) dat[i]= sawdat[i]; break;
+case 3: for(i=0;i<64;i++) dat[i]= rectdat[i]; break;
+case 4: setpulse(duty); break;
+}
+}
+
+void setpulse(int n)
+{
+int i;
+for(i=0;i<64;i++){
+if (n>i) dat[i]= 63; else dat[i]=0;
+}
+}
+
+void watch()
+{
+if (fix==1){ // フィックスされている時の処理
+if (digitalRead(MODESEL)==HIGH) return; // モードボタン入力がなければリターン
+else {
+fixcnt=0;
+fix=0; // モードボタン入力があったらフィックス解除
+while(digitalRead(MODESEL)==LOW); // モードボタンが離されるまで待つ
+return; // 離す時のチャタリングがあると次の波形選択に移った時誤動作するのでリターン
+}
+}
+fixcnt++; if (fixcnt>100){
+fix=1; // ５秒間（50ms×100）何もしなかったらフィックス
+lcd.setCursor(13,1); lcd.print("FIX");
+lcd.setCursor(13,1); lcd.print("FIX"); // まれに書き損なうことがあるので2回かく
+}
+
+// 波形選択
+if(digitalRead(MODESEL)==LOW){
+mode++; if (mode>4) mode=0;
+setdat(mode);
+while(digitalRead(MODESEL)==LOW);
+fixcnt=0; // フィックスカウンタリセット
+}
+
+// 周波数レンジ切り替え
+if(digitalRead(FREQSEL)==LOW){
+frange++; if (frange>2) frange=0;
+while(digitalRead(FREQSEL)==LOW);
+fixcnt=0; // フィックスカウンタリセット
+}
+
+// 周波数ボリューム読み取りによる周波数とディレイ時間の設定
+fdelay=fdat[frange]*map(analogRead(FVOL),0,1024,1,50);
+freq=15625/fdelay;
+if (abs(freq-freqB)>5){ // 周波数が変えられた時フィックスカウンタリセット
+freqB=freq;
+fixcnt=0; // フィックスカウンタリセット
+}
+
+// デューティー比設定ボリューム読み取り
+duty=analogRead(DUVOL)/16;
+// デューティー比が変えられた時，波形データ再設定とフィックスカウンタリセット
+if (abs(duty-dutyB)>5){
+dutyB=duty;
+fixcnt=0; // フィックスカウンタリセット
+if(mode==4) setpulse(duty);
+}
+
+// 出力ボリューム読み取り
+if (dat[k]>45){ // 出力計測は波形データ値が大きいときにしかしない（小さいと誤差が大きいため）
+vout=(float)analogRead(VMEAS)/dat[k]/3.5;
+if (abs(vout-voutB)>0.5){ // 出力を変えたときフィックスカウンタリセット（誤差大きいのでしきい値高め）
+voutB=vout;
+fixcnt=0; // フィックスカウンタリセット
+}
+}
+vout1=int(vout); // 整数部
+vout2=int((vout-vout1)*10); // 0.1の桁を抜き出し
+
+// LCD表示
+lcdcnt++;
+if (lcdcnt>10){ // 時間がかかるので0.5秒（50ms×10）ごとに表示更新
+lcdcnt=0;
+lcd.clear();
+switch (mode){
+case 0: lcd.print("Sine Wave"); break;
+case 1: lcd.print("Triangle Wave"); break;
+case 2: lcd.print("Sawtooth Wave"); break;
+case 3: lcd.print("Square Wave"); break;
+case 4: lcd.print("Pulse Wave"); break;
+}
+lcd.setCursor(0,1); lcd.print(freq); lcd.print("Hz");
+lcd.setCursor(8,1); lcd.print(vout1); lcd.print("."); lcd.print(vout2); lcd.print("V");
+}
+}
+
+void setup() // run once, when the sketch starts
+{
+DDRB=B00111111;
+setdat(0);
+lcd.clear();
+MsTimer2::set(50,watch);
+MsTimer2::start();
+}
+
+void loop() // run over and over again
+{
+int i;
+for(k=0;k<64;k++){
+PORTB=dat[k];
+delayMicroseconds(fdelay);
+}
+}
