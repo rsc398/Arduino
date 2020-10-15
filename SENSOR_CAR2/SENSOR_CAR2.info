@@ -1,0 +1,94 @@
+#include<Servo.h>
+const int servoPin = 11;
+Servo myservo;
+int degree[] = {0,30,60,90,120,90,60,30};
+int len = sizeof(degree) / sizeof(int);
+int i = 0;
+int echo = 3;
+int trig = 2;
+double duration = 0;
+double distance = 0;
+int flag = false;
+int subflag = true;
+void ultrasonic(void);
+void advance(void);
+void recession(void);
+void angle(void);
+
+void setup() {
+  myservo.attach(servoPin);
+  pinMode(echo, INPUT );
+  pinMode(trig, OUTPUT );
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
+  Serial.begin(9600);
+}
+void loop() {
+  for (i = 0; i < len; i++) {
+    myservo.write(degree[i]);
+    delay(100);
+    ultrasonic();
+    Serial.print("distance:");
+    Serial.println(distance);
+    if ((distance > 10) && (subflag == true)) {
+      flag = true;
+    }
+    if (distance < 10) {
+      flag = false;
+    }
+    if (flag == true) {
+      advance();
+    }
+    if (flag == false) {
+      subflag = false;
+      recession();
+      ultrasonic();
+      Serial.print("distance2:");
+      Serial.println(distance);
+      while (distance > 40) {
+        angle();
+        subflag = true;
+        break;
+      }
+    }
+  }
+}
+void ultrasonic(void) {
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+  digitalWrite( trig, HIGH );
+  delayMicroseconds(10);
+  digitalWrite( trig, LOW );
+  duration = pulseIn( echo, HIGH );
+  if (duration > 0) {
+    duration = duration/2;
+    distance = duration*340*100/1000000;
+  }
+}
+void advance(void) {
+  analogWrite(6,255);
+  digitalWrite(4,HIGH);
+  digitalWrite(5,LOW);
+  analogWrite(10,255);
+  digitalWrite(8,LOW);
+  digitalWrite(9,HIGH);
+}
+void recession(void) {
+  analogWrite(6,255);
+  digitalWrite(4,LOW);
+  digitalWrite(5,HIGH);
+  analogWrite(10,255);
+  digitalWrite(8,HIGH);
+  digitalWrite(9,LOW);
+}
+void angle(void) {
+  analogWrite(6,255);
+  digitalWrite(4,HIGH);
+  digitalWrite(5,LOW);
+  analogWrite(10,100);
+  digitalWrite(8,LOW);
+  digitalWrite(9,HIGH);
+  delay(1000);
+}
