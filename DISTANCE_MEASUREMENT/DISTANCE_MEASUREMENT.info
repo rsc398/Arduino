@@ -1,0 +1,19 @@
+#include <VL53L0X.h>
+
+VL53L0X vl53l0x;
+
+void setup() {
+    pinMode(21, INPUT_PULLUP);
+    pinMode(22, INPUT_PULLUP);
+    Wire.begin();
+    Wire.setClock(400000UL);
+
+    vl53l0x.init();
+    vl53l0x.setTimeout(500);
+    vl53l0x.startContinuous();
+}
+
+void loop() {
+    // 測定結果をmmで取得
+    uint16_t VL53L0X_d = vl53l0x.readRangeContinuousMillimeters();
+}
