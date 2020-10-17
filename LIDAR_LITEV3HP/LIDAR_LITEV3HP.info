@@ -1,0 +1,16 @@
+#include <LIDARLite_v3HP.h>
+LIDARLite_v3HP myLidarLite;
+
+void setup() {
+    pinMode(21, INPUT_PULLUP);
+    pinMode(22, INPUT_PULLUP);
+    Wire.begin();
+    Wire.setClock(400000UL);
+
+    myLidarLite.configure(0);
+}
+void loop() {
+    myLidarLite.waitForBusy();
+    myLidarLite.takeRange();
+    v3HP_d = myLidarLite.readDistance();
+}
