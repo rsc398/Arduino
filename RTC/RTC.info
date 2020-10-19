@@ -1,0 +1,82 @@
+#include <DS3232RTC.h>
+#include <Time.h>
+#include <Wire.h>
+#include <avr/sleep.h>
+#include <avr/power.h>
+
+bool rtcint = false;
+
+void setup(void)
+{
+  RTC.alarmInterrupt(1, false);
+  RTC.alarmInterrupt(2, false);
+  RTC.oscStopped(true);
+  Serial.begin(9600);
+  setSyncProvider(RTC.get);
+  if (timeStatus() != timeSet)
+    Serial.println("Unable to sync with the RTC");
+  else
+    Serial.println("RTC has set the system time");
+  Serial.flush();
+  digitalClockDisplay();
+  synctozero();
+  RTC.alarm(2);
+  attachInterrupt(4, alcall, FALLING);
+  RTC.setAlarm(ALM2_EVERY_MINUTE , 0, 0, 0);
+  RTC.alarmInterrupt(2, true);
+  digitalClockDisplay();
+}
+
+void loop(void)
+{
+  if (rtcint) {
+    rtcint = false;
+    digitalClockDisplay();
+    RTC.alarm(2);
+  }
+  enterSleep();
+}
+
+void synctozero() {
+  while (second() != 0) {
+    delay(100);
+  }
+}
+
+void alcall() {
+  rtcint = true;
+}
+
+void digitalClockDisplay(void)
+{
+  setSyncProvider(RTC.get); //sync time with RTC
+  Serial.print(hour());
+  printDigits(minute());
+  printDigits(second());
+  Serial.print(' ');
+  Serial.print(day());
+  Serial.print(' ');
+  Serial.print(month());
+  Serial.print(' ');
+  Serial.print(year());
+  Serial.println();
+  Serial.flush();
+}
+
+void printDigits(int digits)
+{
+  Serial.print(':');
+  if (digits < 10)
+    Serial.print('0');
+  Serial.print(digits);
+}
+
+void enterSleep(void)
+{
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  sleep_enable();
+  sleep_mode();
+
+  sleep_disable();
+  power_all_enable();
+}
