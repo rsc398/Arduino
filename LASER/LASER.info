@@ -1,0 +1,209 @@
+#include 　"SPI.h"
+#include   "SD.h"
+
+#define NsleepX 14
+#define StepX 9
+#define DirX 8
+#define NsleepY 7
+#define StepY 6
+#define DirY 4
+#define Pwm 5
+# define ChipSel 10
+File mySD;
+#define Led 2
+#define Sw 3
+#define Stoppers 15
+#define Btctl 2
+#define tmStpX 700  // stepperX phase time in μS
+#define tmStpY 700  // stepperY phase time in μS
+#define enlargeX 2  // enlarge-multiplier for X
+#define enlargeY 2  // enlarge-multiplier for Y
+#define dutyOn 150   // duty ratio while laser On
+#define dutyOff 0    // duty ratio while laser Off
+#define dutyPos 1    // duty ratio while positioning
+#define burnTime 14  // burning time (milliseconds)
+int sizeX;           // picture size x
+int sizeY;           // picture size y
+int pX = 0;          // current position X
+int pY = 0;          // current position Y
+int newX;            // new position X
+int newY;            // new position Y
+byte Byte;           // byte work area
+int Value;           // value work area
+int k;
+int loopNum = 0;
+
+void setup() {
+  analogWrite(Pwm, dutyOff);
+  pinMode(NsleepX, OUTPUT);
+  digitalWrite(NsleepX, LOW);
+  pinMode(NsleepY, OUTPUT);
+  digitalWrite(NsleepY, LOW);
+  pinMode(DirX, OUTPUT);
+  pinMode(DirY, OUTPUT);
+  pinMode(StepX, OUTPUT);
+  digitalWrite(StepX, LOW);
+  pinMode(StepY, OUTPUT);
+  digitalWrite(StepY, LOW);
+  pinMode(Sw, INPUT_PULLUP);
+  pinMode(Led, OUTPUT);
+  digitalWrite(Led, LOW);
+
+  Serial.begin(9600);
+  delay(1000);
+  Serial.println("Pwr 12V on");
+  while (digitalRead(Sw) == HIGH) {
+    bLED(1, 50, 10);
+  }
+  delay(500);
+  Serial.println("Adj Center");
+  while (digitalRead(Sw) == HIGH) {
+    analogWrite(Pwm, dutyPos);
+    digitalWrite(Led, HIGH);
+    delay(30);
+    analogWrite(Pwm, dutyOff);
+    digitalWrite(Led, LOW);
+    delay(40);
+  }
+  analogWrite(Pwm, dutyOff);
+  delay(500);
+  Serial.println("Protect eyes!");
+  while (digitalRead(Sw) == HIGH) {
+    bLED(1, 15, 30);
+  }
+  delay(500);
+  if (!SD.begin(ChipSel)) {
+    Serial.println("Chk SD");
+    while (1) {
+      bLED(20, 20, 30);
+    }
+  }
+  mySD = SD.open("PICT.txt");
+  Rd4();
+  sizeX = Value - 1000;
+  Rdskip(1);
+  Rd4();
+  sizeY = Value - 1000;
+  Rdskip(14);
+  newX = -sizeX / 2;
+  digitalWrite(NsleepX, HIGH);
+  delay(2);
+  movX();
+  newY = -sizeY / 2;
+  movY();
+}
+void loop() {
+  Rd4();
+  if (Value >= 9999) {
+    EndProc();
+  }
+  newX = Value - 1000;
+  Rdskip(1);
+  Rd4();
+  newY = Value - 1000;
+  Rdskip(14);
+  loopNum++;
+  Serial.print("#=");
+  Serial.print(loopNum);
+  Serial.print (" ");
+  Serial.print (pX);
+  Serial.print (",");
+  Serial.print (pY);
+  Serial.print (" to ");
+  Serial.print (newX);
+  Serial.print (",");
+  Serial.println (newY);
+  movY();
+  movX();
+  laserBeam();
+  pX = newX;
+  pY = newY;
+}
+void Rd4(void) {
+  Value = 0;
+  for (k = 0; k < 4; k++) {
+    Byte = mySD.read();
+    Byte = Byte & B00001111;
+    Value = Value * 10 + Byte;
+  }
+}
+void Rdskip(int bn) {
+  for (k = 0; k < bn; k++) {
+    Byte = mySD.read();
+  }
+}
+void movX(void) {
+  int Delta;
+  if (newX == pX) {
+    return;
+  }
+  if (newX > pX) {
+    digitalWrite(DirX, HIGH);
+    Delta = newX - pX;
+  }
+  if (newX < pX) {
+    digitalWrite(DirX, LOW);
+    Delta = pX - newX;
+  }
+  for (int l = 0; l < Delta * enlargeX; l++) {
+    for (int m = 0; m < 8; m++) {
+      digitalWrite(StepX, HIGH);
+      delayMicroseconds(tmStpX);
+      digitalWrite(StepX, LOW);
+      delayMicroseconds(tmStpX);
+    }
+  }
+  delay(2);
+}
+void movY(void) {
+  int Delta;
+  if (newY == pY) {
+    return;
+  }
+  if (newY > pY) {
+    digitalWrite(DirY, HIGH);
+    Delta = newY - pY;
+  }
+  if (newY < pY) {
+    digitalWrite(DirY, LOW);
+    Delta = pY - newY;
+  }
+  digitalWrite(NsleepY, HIGH);
+  delay(2);
+
+  for (int l = 0; l < Delta * enlargeY; l++) {
+    for  (int m = 0; m < 8; m++) {
+      digitalWrite(StepY, HIGH);
+      delayMicroseconds(tmStpY);
+      digitalWrite(StepY, LOW);
+      delayMicroseconds(tmStpY);
+    }
+  }
+  delay(2);
+  digitalWrite(NsleepY, LOW);
+}
+void laserBeam(void) {
+  analogWrite(Pwm, dutyOn);
+  delay(burnTime);
+  analogWrite(Pwm, dutyOff);
+}
+void EndProc(void) {
+  newX = sizeX / 2;
+  newY = sizeY / 2;
+  movY();
+  movX();
+  delay(2);
+  digitalWrite(NsleepX, LOW);
+  Serial.println("Power-off 12V-DC");
+  mySD.close();
+  while (1) {}
+}
+void bLED(int nTimes, int onmS, int offmS)
+{
+  for (int m = 0; m < nTimes; m++) {
+    digitalWrite(Led, HIGH);
+    delay(onmS);
+    digitalWrite(Led, LOW);
+    delay(offmS);
+  }
+}
