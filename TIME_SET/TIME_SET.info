@@ -1,0 +1,126 @@
+#include <stdio.h>
+#include <RTClib.h>
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+RTC_DS1307 RTC;
+
+void setup () {
+    pinMode(2, INPUT_PULLUP);
+    pinMode(3, INPUT_PULLUP);
+
+    RTC.begin();
+    lcd.init();
+    lcd.backlight();
+}
+int mode;
+
+int year;
+int month;
+int day;
+int hour;
+int minute;
+int second;
+
+void loop () {
+    static int old_second;
+    if (RTC.isrunning()) {
+        //時刻を取得
+        getNow();
+
+        if(old_second!=second){
+          //LCDに時間を表示
+          lcdshow();
+          old_second=second;
+        }
+        if(chatteringCut_pullupPin(2)){
+            mode++;
+            if(6<mode) mode=0;
+        }
+        if(mode && chatteringCut_pullupPin(3)){
+            getNow();
+            switch (mode){
+                case 1:
+                  year++;
+                  if(year>2050) year=2000;
+                  break;
+                case 2:
+                  month++;
+                  if(month>12) month=1;
+                  break;
+                case 3:
+                  day++;
+                  if(day>31) day=1;
+                  break;
+                case 4:
+                  hour++;
+                  if(hour>23) hour=0;
+                  break;
+                case 5:
+                  minute++;
+                  if(minute>59) minute=0;
+                  break;
+                case 6:
+                  if(second>30 && minute<59) minute++;
+                  second=0;
+                  break;
+                default:
+                  break;
+            }
+            RTC.adjust(DateTime(year,month,day,hour,minute,second));
+            lcdshow();
+        }
+    }else{
+        lcd.setCursor(0, 0);
+        lcd.print("RTC not find    ");
+        lcd.setCursor(0, 1);
+        lcd.print("ERROR           ");
+    }
+}
+void getNow(){
+    DateTime now = RTC.now();
+    year = now.year();
+    month = now.month();
+    day = now.day();
+    hour = now.hour();
+    minute = now.minute();
+    second = now.second();
+}
+void lcdshow(){
+    static bool brink;
+    static unsigned long old_millis;
+
+    if((millis()-old_millis)>300){
+        brink=!brink;
+        old_millis=millis();
+    }
+    char str[17];
+
+    lcd.setCursor(0, 0);
+
+    sprintf(str,"%4d/",year);
+    sprintf(str+5,"%2d/",month);
+    sprintf(str+8,"%2d      ",day);
+    if(1==mode && brink) sprintf(str,"    ");
+    if(2==mode && brink) sprintf(str+5,"  ");
+    if(3==mode && brink) sprintf(str+8,"  ");
+    lcd.print(str);
+
+    lcd.setCursor(0, 1);
+
+    sprintf(str,"%002d:",hour);
+    sprintf(str+3,"%002d:",minute);
+    sprintf(str+6,"%002d        ",second);
+    if(4==mode && brink) sprintf(str,"  ");
+    if(5==mode && brink) sprintf(str+3,"  ");
+    if(6==mode && brink) sprintf(str+6,"  ");
+    lcd.print(str);
+
+}
+unsigned int chatteringCut_pullupPin(int pinNo){
+    unsigned int i=0;
+    while(!digitalRead(pinNo)){
+        i++;
+        delay(1);
+    }
+    return i&(~(unsigned int)0x3F);
+}
