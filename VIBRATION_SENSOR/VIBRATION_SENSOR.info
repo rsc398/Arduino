@@ -1,0 +1,69 @@
+#include
+int CS=10;
+int LED_OUT=7;
+#define BW_RATE     0x2C    //Data rate and power mode control
+#define POWER_CTL   0x2D    //Power Control Register
+#define INT_SOURCE  0x30    //Source of interrupts
+#define DATA_FORMAT 0x31    //Data format control
+#define DATAX0      0x32    //X-Axis Data 0
+
+#define DATA_READY  0x80
+
+char values[10];
+int x,y,z;
+double xg, yg, zg;
+
+void setup(){
+  SPI.begin();
+  SPI.setDataMode(SPI_MODE3);
+  Serial.begin(9600);
+
+  pinMode(CS, OUTPUT);
+  pinMode(LED_OUT, OUTPUT);
+
+  digitalWrite(CS, HIGH);
+  digitalWrite(LED_OUT, LOW);
+
+  writeRegister(DATA_FORMAT, 0x03);
+  writeRegister(BW_RATE, 0x19);
+  writeRegister(POWER_CTL, 0x08);
+  readRegister(INT_SOURCE, 1, values);
+}
+
+void loop()
+{
+  readRegister(INT_SOURCE, 1, values);
+  if(values[0] & DATA_READY)
+  {
+      readRegister(DATAX0, 6, values);
+
+      x  = ((int)values[1]<<8)|(int)values[0];
+      y  = ((int)values[3]<<8)|(int)values[2];
+      z  = ((int)values[5]<<8)|(int)values[4];
+      xg = x * 0.03125;
+      yg = y * 0.03125;
+      zg = z * 0.03125;
+
+      Serial.print(xg);
+      Serial.print("¥t');
+      Serial.print(yg);
+      Serial.print('¥t');
+      Serial.println(zg);
+  }
+}
+void writeRegister(char registerAddress, char value){
+ digitalWrite(CS, LOW);
+ SPI.transfer(registerAddress);
+ digitalWrite(CS, HIGH);
+ }
+
+void readRegister(char registerAddress, int numBytes, char * values){
+ char address = 0x80 | registerAddress;
+ if(numBytes > 1)address = address | 0x40;
+ digitalWrite(CS, LOW);
+ SPI.transfer(address);
+ for(int i=0; i<numBytes; i++){
+ values[i] = SPI.transfer(0x00);
+ }
+ digitalWrite(CS, HIGH);
+}
