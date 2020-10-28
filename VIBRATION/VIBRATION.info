@@ -1,0 +1,10 @@
+const int sPin = A0;
+
+void setup() {
+  Serial.begin(9600);
+}
+void loop() {
+ int sValue = analogRead(sPin);
+ Serial.println(sValue);
+ delay(750);
+}
