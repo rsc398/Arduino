@@ -1,0 +1,21 @@
+#include
+#include
+
+#define pi 3.1415926535
+int dft(char filename1[], char filename2[])
+{
+    int k, n, N;
+    int max = 100000;
+    double f[max+1], re, im;
+
+    FILE *fp1, *fp2;
+    if((fp1=fopen(filename1,"r"))==NULL){
+        printf("FILE1 not open\n");
+        return -1;
+    }
+    if((fp2=fopen(filename2,"w"))==NULL){
+        printf("FILE2 not open\n");
+        return -1;
+    }
+    //データの読み込み
+    for(N=0; N
