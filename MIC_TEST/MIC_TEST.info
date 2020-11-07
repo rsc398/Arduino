@@ -1,0 +1,31 @@
+int PinFlag ;
+long TimeCount ;
+
+void InterPin()
+{
+     PinFlag = 1 ;                         // 割込み有ればＯＮ
+}
+void setup()
+{
+     pinMode(13,OUTPUT) ;                  // 13番ピン付属LED出力
+     attachInterrupt(0,InterPin, RISING) ; // ２番ピンの割込みを指定(立上がりで割込み)
+     PinFlag   = 0 ;
+     TimeCount = 0 ;
+}
+void loop()
+{
+     // 割込み有ればその時点の時刻を保存してLEDを点灯する
+     while(PinFlag) {
+          PinFlag = 0 ;
+          TimeCount = millis() ;           // 現在の時刻を保存
+          digitalWrite(13,HIGH) ;          // LEDを点灯
+     }
+     // １秒間カウントしたらLEDを消灯する
+     if (TimeCount != 0) {
+          if ((millis() - TimeCount) >= 1000) {
+               TimeCount = 0 ;
+               digitalWrite(13,LOW) ;      // LEDを消灯
+          }
+     }
+}
+--------
