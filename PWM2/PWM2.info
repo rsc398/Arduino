@@ -1,0 +1,8 @@
+void setup(){
+TCCR1B &= B11111000;
+TCCR1B |= B00000001;
+pinMode(9, OUTPUT);
+}
+void loop(){
+analogWrite(9,100);
+}
