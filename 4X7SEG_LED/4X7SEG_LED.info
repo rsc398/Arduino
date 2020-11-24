@@ -1,0 +1,20 @@
+#define DIGIT_ON LOW
+#define DIGIT_OFF HIGH
+#define SEGMENT_ON HIGH
+#define SEGMENT_OFF LOW
+
+const int digitPin = 13;
+const int segmentPin = 2;
+
+void setup() {
+  pinMode(digitPin, OUTPUT);
+  pinMode(segmentPin, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(digitPin, DIGIT_ON);
+  digitalWrite(segmentPin, SEGMENT_ON);
+  delay(500);
+  digitalWrite(segmentPin, SEGMENT_OFF);
+  delay(500);
+}
