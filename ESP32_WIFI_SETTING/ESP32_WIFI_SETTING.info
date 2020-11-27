@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang='ja'><head><meta charset='UTF-8'>
+<style>
+    #base         {font-size:16pt; text-align:center; width:600px; border:solid 4px #00000000; background-color:#c0c0c0; }
+    #text_box     {height: 25px; font-size:12pt; float:left ; text-align:left; width:45%;}
+    #input_box    {height: 25px; font-size:12pt; float:right; text-align:left; width:55%;}
+    #ip_box       {height: 25px; font-size:12pt; float:right; text-align:left; width:15%;}
+    #radio_box    {font-size:12pt; clear:both; margin : 0% 20% ; width : 60% ;}
+    #button       {font-size:12pt; clear:both; width 50%}
+    #foot         {font-size:16pt; clear:both;}
+    input.val     {width: 90%;}
+    input.ip      {width: 20%;}
+    input.button  {margin:10px 10% ; width: 25%;}
+    input.radio   {margin:10px 0px 0px 15% ; }
+</style>
+
+<title>設定画面</title></head>
+
+<body>
+<div id="base">
+  <p>設定画面</p>
+  <div id="text_box">
+    <span> WiFi 接続先 SSID </span>
+  </div>
+ <form method="get">
+  <div id="input_box">
+      <input class='val' type='text' name='ssid' id='ssid' value=$ssid>
+  </div>
+  <div id="text_box">
+    <span> WiFi 接続先 PASSWORD </span>
+  </div>
+  <div id="input_box">
+      <input class='val' type='text' name='pass' id='pass' value=$pass>
+  </div>
+  <div id="text_box">
+    <span> WiFi 接続  IP アドレス </span>
+  </div>
+  <div id="input_box">
+      <input class='ip' type='number' name='ip1' id='ip1' min=0 max=255 value=$ip1 >
+      <input class='ip' type='number' name='ip2' id='ip2' min=0 max=255 value=$ip2 >
+      <input class='ip' type='number' name='ip3' id='ip3' min=0 max=255 value=$ip3 >
+      <input class='ip' type='number' name='ip4' id='ip4' min=0 max=255 value=$ip4 >
+  </div>
+  <div id="text_box">
+    <span> WiFi 接続  サブネットマスク</span>
+  </div>
+  <div id="input_box">
+      <input class='ip' type='number' name='sn1' id='sn1' min=0 max=255 value=$sm1 >
+      <input class='ip' type='number' name='sn2' id='sn2' min=0 max=255 value=$sm2 >
+      <input class='ip' type='number' name='sn3' id='sn3' min=0 max=255 value=$sm3 >
+      <input class='ip' type='number' name='sn4' id='sn4' min=0 max=255 value=$sm4 >
+  </div>
+  <div id="text_box">
+    <span> WiFi 接続  デフォルトゲートウェイ</span>
+  </div>
+  <div id="input_box">
+      <input class='ip' type='number' name='gw1' id='gw1' min=0 max=255 value=$gw1 >
+      <input class='ip' type='number' name='gw2' id='gw2' min=0 max=255 value=$gw2 >
+      <input class='ip' type='number' name='gw3' id='gw3' min=0 max=255 value=$gw3 >
+      <input class='ip' type='number' name='gw4' id='gw4' min=0 max=255 value=$gw4 >
+  </div>
+  <div id="text_box">
+    <span> WiFi 接続  DNSアドレス</span>
+  </div>
+  <div id="input_box">
+      <input class='ip' type='number' name='dns1' id='dns1' min=0 max=255 value=$dns1 >
+      <input class='ip' type='number' name='dns2' id='dns2' min=0 max=255 value=$dns2 >
+      <input class='ip' type='number' name='dns3' id='dns3' min=0 max=255 value=$dns3 >
+      <input class='ip' type='number' name='dns4' id='dns4' min=0 max=255 value=$dns4 >
+  </div>
+  <div id="radio_box">
+      <input class='radio' type='radio' name='wifi_stamode' id='rad_sta' value='sta' $checked_sta > STA MODE
+      <input class='radio' type='radio' name='wifi_stamode' id='rad_ap' value='ap' $checked_ap > AP MODE
+  </div>
+  <div id="button">
+      <input class='button' type='submit' name='set' id='set' value='設定'>
+  </div>
+ </form>
+ <div id="foot">
+   <span>$footer</span>
+ </div>
+</div>
+</body>
+</html>
