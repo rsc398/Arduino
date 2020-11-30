@@ -1,0 +1,186 @@
+#include <SPI.h>
+#include <Ethernet.h>
+
+// this must be unique
+byte mac[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
+
+char smtp_server[] = "mail.smtp2go.com";
+int smtp_port = 2525;
+char smtp_user64[] = "Email AddressをBase64に変換した文字列"; // Your Username of SMTP2GO
+char smtp_pass64[] = "PasswordをBase64に変 換した文字列"; // Your Password of SMTP2GO
+char mail_from[] = "MailFrom@example.com"; // Mail From
+char mail_to[] = "MailTo@example.com"; // Mail To
+
+EthernetClient client;
+
+void setup()
+{
+  Serial.begin(9600);
+  Serial.print("Ethernet.begin....");
+  if (Ethernet.begin(mac) == 0) {
+    Serial.println("Failed to configure Ethernet using DHCP");
+    while(1) {}
+  }
+  Serial.println("ok....");
+  Serial.print("localIP: ");
+  Serial.println(Ethernet.localIP());
+  Serial.print("subnetMask: ");
+  Serial.println(Ethernet.subnetMask());
+  Serial.print("gatewayIP: ");
+  Serial.println(Ethernet.gatewayIP());
+  Serial.print("dnsServerIP: ");
+  Serial.println(Ethernet.dnsServerIP());
+  Serial.println(F("Ready. Press 'e' to send."));
+}
+
+void loop()
+{
+  byte inChar;
+
+  inChar = Serial.read();
+  if(inChar == 'e') {
+    if(sendEmail()) {
+      Serial.println(F("Email sent"));
+      Serial.println(F("Ready. Press 'e' to send."));
+    } else {
+      Serial.println(F("Email failed"));
+    }
+  }
+}
+
+byte sendEmail()
+{
+  char buff[64];
+
+  if(client.connect(smtp_server,smtp_port) == 1) {
+    Serial.println(F("connected"));
+  } else {
+    Serial.println(F("connection failed"));
+    return 0;
+  }
+
+  if(!eRcv()) return 0;
+
+  Serial.println(F("Sending EHLO"));
+  client.println("EHLO");
+  if(!eRcv()) return 0;
+
+  Serial.println(F("Sending auth login"));
+  client.println("auth login");
+  if(!eRcv()) return 0;
+
+  Serial.println(F("Sending User"));
+// Change to your base64 encoded user
+  client.println(smtp_user64);
+  if(!eRcv()) return 0;
+
+  Serial.println(F("Sending Password"));
+// change to your base64 encoded password
+  client.println(smtp_pass64);
+  if(!eRcv()) return 0;
+
+// change to your email address (sender)
+  Serial.println(F("Sending From"));
+  sprintf(buff,"MAIL From: <%s>",mail_from);
+  client.println(buff);
+  if(!eRcv()) return 0;
+
+// change to recipient address
+  Serial.println(F("Sending To"));
+  sprintf(buff,"RCPT To: <%s>",mail_to);
+  client.println(buff);
+  if(!eRcv()) return 0;
+
+  Serial.println(F("Sending DATA"));
+  client.println("DATA");
+  if(!eRcv()) return 0;
+
+  Serial.println(F("Sending email"));
+  sprintf(buff,"To: You <%s>",mail_to);
+  client.println(buff);
+
+  sprintf(buff,"From: Me <%s>",mail_from);
+  client.println(buff);
+
+  client.println("Subject: Arduino email test\r\n");
+  client.println("Hello !!");
+  client.println("Mail from my Arduino!");
+  client.println(".");
+  if(!eRcv()) return 0;
+
+  Serial.println(F("Sending QUIT"));
+  client.println("QUIT");
+  if(!eRcv()) return 0;
+
+  client.stop();
+
+  Serial.println(F("disconnected"));
+
+  return 1;
+}
+
+byte eRcv()
+{
+  byte respCode;
+  byte thisByte;
+  int loopCount = 0;
+
+  while(!client.available()) {
+    delay(1);
+    loopCount++;
+
+    // if nothing received for 10 seconds, timeout
+    if(loopCount > 10000) {
+      client.stop();
+      Serial.println(F("\r\nTimeout"));
+      return 0;
+    }
+  }
+
+  respCode = client.peek();
+
+  while(client.available())
+  {
+    thisByte = client.read();
+    Serial.write(thisByte);
+  }
+
+  if(respCode >= '4')
+  {
+    efail();
+    return 0;
+  }
+
+  return 1;
+}
+
+
+void efail()
+{
+  byte thisByte = 0;
+  int loopCount = 0;
+
+  client.println(F("QUIT"));
+
+  while(!client.available()) {
+    delay(1);
+    loopCount++;
+
+    // if nothing received for 10 seconds, timeout
+    if(loopCount > 10000) {
+      client.stop();
+      Serial.println(F("\r\nTimeout"));
+      return;
+    }
+  }
+
+  while(client.available())
+  {
+    thisByte = client.read();
+    Serial.write(thisByte);
+  }
+
+  client.stop();
+
+  Serial.println(F("disconnected"));
+}
